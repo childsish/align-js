@@ -1,0 +1,22 @@
+{
+  "name": "align-js",
+  "version": "1.0.0",
+  "description": "Naive implementation of Smith-Waterman in Javascript",
+  "main": "align.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "mocha tests --recursive"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/childsish/align-js.git"
+  },
+  "author": "Liam H. Childs",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/childsish/align-js/issues"
+  },
+  "homepage": "https://github.com/childsish/align-js#readme"
+}

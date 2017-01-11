@@ -1,2 +1,2 @@
 # align-js
-Naive implementation of Smith-Waterman in Javascript
+A naive implementation of Smith-Waterman in Javascript
