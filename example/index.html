@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>align-js</title>
+</head>
+<body>
+
+<textarea id="sequence1" type="text" rows="4" cols="50">ataggcgata</textarea>
+<textarea id="sequence2" type="text" rows="4" cols="50">ggcg</textarea>
+<button id="align_button">Align Sequences</button>
+<div>
+    <span>Alignment score:</span>
+    <span id="score"></span>
+</div>
+<pre id="alignment"></pre>
+<script>
+    const exports = {};
+
+    window.onload = function() {
+        document.getElementById("align_button").addEventListener("click", align_input, false);
+    };
+
+    function align_input() {
+        var sequence1 = document.getElementById('sequence1').value;
+        var sequence2 = document.getElementById('sequence2').value;
+
+        var alignment = align(sequence1, sequence2);
+
+        document.getElementById('alignment').textContent = alignment.to_string();
+        document.getElementById('score').textContent = String(alignment.get_score());
+    }
+</script>
+<script src="../align.js"></script>
+</body>
+</html>
