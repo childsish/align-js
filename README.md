@@ -1,21 +1,26 @@
 # align-js
-A naive implementation of Smith-Waterman in Javascript
+
+Global, semi-global and local alignment implemented in Javascript.
 
 ## Usage
 
-The simplest way to align two sequences is to import the align function.
+The simplest way to align two sequences is to import an alignment function from the `align` module. The three possible alignment functions are `global`, `semi` and `local`.
 
 ``` javascript
-const align = require('align').align;
+# const align = require('align').global;
+# const align = require('align').semi;
+const align = require('align').local;
 
 var alignment = align('ataggcgata', 'ggcg');
 console.log(alignment.to_string());
 console.log(alignment.get_score());
 ```
 
-If you want to perform multiple alignments you can create a LocalAligner.
+If you want to perform multiple alignments you can create an Aligner. Again, there are three possibilities; GlobalAligner, SemiGlobalAligner and LocalAligner.
 
 ``` javascript
+# const GlobalAligner = require('align').GlobalAligner;
+# const SemiGlobalAligner = require('align').SemiGlobalAligner;
 const LocalAligner = require('align').LocalAligner;
 
 var aligner = new LocalAligner();
@@ -38,8 +43,10 @@ var scoring_matrix = new Int32Array([
     2, 3, 4, 5, 4,
     1, 2, 3, 4, 5
 ]);
-var aligner = new LocalAligner(scoring_matrix, character_map);
+var aligner = new align.LocalAligner(scoring_matrix, character_map);
 var alignment = aligner.align('abcdef', 'aecbfabefacbfe');
 console.log(alignment.to_string());
 console.log(alignment.get_score());
 ```
+
+Examples can be found in the examples directory.
