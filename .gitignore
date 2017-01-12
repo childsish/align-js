@@ -1,2 +1,8 @@
+# Directories
+
 .idea
 node_modules
+
+# Files
+
+*.js.map

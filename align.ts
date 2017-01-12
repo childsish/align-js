@@ -1,12 +1,21 @@
-const DEFAULT_NUCLEOTIDE_ALPHABET = 'acgtn_';
+const DEFAULT_NUCLEOTIDE_ALPHABET = 'ATGCSWRYKMBVHDN';
 
 const DEFAULT_NUCLEOTIDE_SCORING_MATRIX = new Int32Array([
-    1, 0, 0, 0, 0, -1,
-    0, 1, 0, 0, 0, -1,
-    0, 0, 1, 0, 0, -1,
-    0, 0, 0, 1, 0, -1,
-    0, 0, 0, 0, 0, -1,
-    -1, -1, -1, -1, -1
+     5, -4, -4, -4, -4,  1,  1, -4, -4,  1, -4, -1, -1, -1, -2,
+    -4,  5, -4, -4, -4,  1, -4,  1,  1, -4, -1, -4, -1, -1, -2,
+    -4, -4,  5, -4,  1, -4,  1, -4,  1, -4, -1, -1, -4, -1, -2,
+    -4, -4, -4,  5,  1, -4, -4,  1, -4,  1, -1, -1, -1, -4, -2,
+    -4, -4,  1,  1, -1, -4, -2, -2, -2, -2, -1, -1, -3, -3, -1,
+     1,  1, -4, -4, -4, -1, -2, -2, -2, -2, -3, -3, -1, -1, -1,
+     1, -4,  1, -4, -2, -2, -1, -4, -2, -2, -3, -1, -3, -1, -1,
+    -4,  1, -4,  1, -2, -2, -4, -1, -2, -2, -1, -3, -1, -3, -1,
+    -4,  1,  1, -4, -2, -2, -2, -2, -1, -4, -1, -3, -3, -1, -1,
+     1, -4, -4,  1, -2, -2, -2, -2, -4, -1, -3, -1, -1, -3, -1,
+    -4, -1, -1, -1, -1, -3, -3, -1, -1, -3, -1, -2, -2, -2, -1,
+    -1, -4, -1, -1, -1, -3, -1, -3, -3, -1, -2, -1, -2, -2, -1,
+    -1, -1, -4, -1, -3, -1, -3, -1, -3, -1, -2, -2, -1, -2, -1,
+    -1, -1, -1, -4, -3, -1, -1, -3, -1, -3, -2, -2, -2, -1, -1,
+    -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 ]);
 
 class CharacterMap {
@@ -45,6 +54,9 @@ class LocalAligner {
     _character_map : CharacterMap;
 
     constructor(scoring_matrix : Int32Array, character_map : CharacterMap) {
+        if (scoring_matrix.length != character_map.alphabet.length ** 2) {
+            throw new Error('Scoring matrix must be square of alphabet length');
+        }
         this._scoring_matrix = scoring_matrix;
         this._character_map = character_map ? character_map : new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET);
     }
