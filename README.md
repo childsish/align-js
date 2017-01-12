@@ -7,8 +7,8 @@ Global, semi-global and local alignment implemented in Javascript.
 The simplest way to align two sequences is to import an alignment function from the `align` module. The three possible alignment functions are `global`, `semi` and `local`.
 
 ``` javascript
-# const align = require('align').global;
-# const align = require('align').semi;
+// const align = require('align').global;
+// const align = require('align').semi;
 const align = require('align').local;
 
 var alignment = align('ataggcgata', 'ggcg');
@@ -19,8 +19,8 @@ console.log(alignment.get_score());
 If you want to perform multiple alignments you can create an Aligner. Again, there are three possibilities; GlobalAligner, SemiGlobalAligner and LocalAligner.
 
 ``` javascript
-# const GlobalAligner = require('align').GlobalAligner;
-# const SemiGlobalAligner = require('align').SemiGlobalAligner;
+// const GlobalAligner = require('align').GlobalAligner;
+// const SemiGlobalAligner = require('align').SemiGlobalAligner;
 const LocalAligner = require('align').LocalAligner;
 
 var aligner = new LocalAligner();
