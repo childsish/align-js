@@ -1,21 +1,22 @@
-const DEFAULT_NUCLEOTIDE_ALPHABET = 'ATGCSWRYKMBVHDN';
+const DEFAULT_NUCLEOTIDE_ALPHABET = 'ATGCSWRYKMBVHDN_';
 
 const DEFAULT_NUCLEOTIDE_SCORING_MATRIX = new Int32Array([
-     5, -4, -4, -4, -4,  1,  1, -4, -4,  1, -4, -1, -1, -1, -2,
-    -4,  5, -4, -4, -4,  1, -4,  1,  1, -4, -1, -4, -1, -1, -2,
-    -4, -4,  5, -4,  1, -4,  1, -4,  1, -4, -1, -1, -4, -1, -2,
-    -4, -4, -4,  5,  1, -4, -4,  1, -4,  1, -1, -1, -1, -4, -2,
-    -4, -4,  1,  1, -1, -4, -2, -2, -2, -2, -1, -1, -3, -3, -1,
-     1,  1, -4, -4, -4, -1, -2, -2, -2, -2, -3, -3, -1, -1, -1,
-     1, -4,  1, -4, -2, -2, -1, -4, -2, -2, -3, -1, -3, -1, -1,
-    -4,  1, -4,  1, -2, -2, -4, -1, -2, -2, -1, -3, -1, -3, -1,
-    -4,  1,  1, -4, -2, -2, -2, -2, -1, -4, -1, -3, -3, -1, -1,
-     1, -4, -4,  1, -2, -2, -2, -2, -4, -1, -3, -1, -1, -3, -1,
-    -4, -1, -1, -1, -1, -3, -3, -1, -1, -3, -1, -2, -2, -2, -1,
-    -1, -4, -1, -1, -1, -3, -1, -3, -3, -1, -2, -1, -2, -2, -1,
-    -1, -1, -4, -1, -3, -1, -3, -1, -3, -1, -2, -2, -1, -2, -1,
-    -1, -1, -1, -4, -3, -1, -1, -3, -1, -3, -2, -2, -2, -1, -1,
-    -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+     5, -4, -4, -4, -4,  1,  1, -4, -4,  1, -4, -1, -1, -1, -2, -5,
+    -4,  5, -4, -4, -4,  1, -4,  1,  1, -4, -1, -4, -1, -1, -2, -5,
+    -4, -4,  5, -4,  1, -4,  1, -4,  1, -4, -1, -1, -4, -1, -2, -5,
+    -4, -4, -4,  5,  1, -4, -4,  1, -4,  1, -1, -1, -1, -4, -2, -5,
+    -4, -4,  1,  1, -1, -4, -2, -2, -2, -2, -1, -1, -3, -3, -1, -5,
+     1,  1, -4, -4, -4, -1, -2, -2, -2, -2, -3, -3, -1, -1, -1, -5,
+     1, -4,  1, -4, -2, -2, -1, -4, -2, -2, -3, -1, -3, -1, -1, -5,
+    -4,  1, -4,  1, -2, -2, -4, -1, -2, -2, -1, -3, -1, -3, -1, -5,
+    -4,  1,  1, -4, -2, -2, -2, -2, -1, -4, -1, -3, -3, -1, -1, -5,
+     1, -4, -4,  1, -2, -2, -2, -2, -4, -1, -3, -1, -1, -3, -1, -5,
+    -4, -1, -1, -1, -1, -3, -3, -1, -1, -3, -1, -2, -2, -2, -1, -5,
+    -1, -4, -1, -1, -1, -3, -1, -3, -3, -1, -2, -1, -2, -2, -1, -5,
+    -1, -1, -4, -1, -3, -1, -3, -1, -3, -1, -2, -2, -1, -2, -1, -5,
+    -1, -1, -1, -4, -3, -1, -1, -3, -1, -3, -2, -2, -2, -1, -1, -5,
+    -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -5,
+    -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5
 ]);
 
 class CharacterMap {
@@ -48,7 +49,94 @@ class CharacterMap {
     }
 }
 
+class GlobalAligner {
+
+    static readonly DIAG = 0;
+    static readonly LEFT = 1;
+    static readonly UP = 2;
+
+    _scoring_matrix : Int32Array;
+    _character_map : CharacterMap;
+
+    constructor(scoring_matrix : Int32Array, character_map : CharacterMap) {
+        if (scoring_matrix.length != character_map.alphabet.length ** 2) {
+            throw new Error('Scoring matrix must be square of alphabet length');
+        }
+        this._scoring_matrix = scoring_matrix;
+        this._character_map = character_map ? character_map : new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET);
+    }
+
+    align(sequence1 : string, sequence2 : string) : GlobalAlignment {
+        let scores = new Int32Array([0, 0, 0]);
+        let alignment = new GlobalAlignment(sequence1, sequence2);
+        let s1 = this._character_map.translate(sequence1);
+        let s2 = this._character_map.translate(sequence2);
+        let gap = this._character_map.translate('_')[0];
+        for (let i = 0; i < sequence1.length; ++i) {
+            for (let j = 0; j < sequence2.length; ++j) {
+                scores[GlobalAligner.DIAG] = alignment.get_score_at(i - 1, j - 1) + this._get_score(s1[i], s2[j]);
+                scores[GlobalAligner.LEFT] = alignment.get_score_at(i, j - 1) + this._get_score(gap, s2[j]);
+                scores[GlobalAligner.UP] = alignment.get_score_at(i - 1, j) + this._get_score(s1[i], gap);
+                let idx = scores.indexOf(Math.max(...scores));
+                alignment.set_score_at(i, j, scores[idx]);
+                alignment.set_pointer(i, j, idx);
+            }
+        }
+        return alignment;
+    }
+
+    _get_score(i : number, j : number) : number {
+        return this._scoring_matrix[i * this._character_map.alphabet.length + j];
+    }
+}
+
+class SemiGlobalAligner {
+
+    static readonly DIAG = 0;
+    static readonly LEFT = 1;
+    static readonly UP = 2;
+
+    _scoring_matrix : Int32Array;
+    _character_map : CharacterMap;
+
+    constructor(scoring_matrix : Int32Array, character_map : CharacterMap) {
+        if (scoring_matrix.length != character_map.alphabet.length ** 2) {
+            throw new Error('Scoring matrix must be square of alphabet length');
+        }
+        this._scoring_matrix = scoring_matrix;
+        this._character_map = character_map ? character_map : new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET);
+    }
+
+    align(sequence1 : string, sequence2 : string) : SemiGlobalAlignment {
+        let scores = new Int32Array([0, 0, 0]);
+        let alignment = new SemiGlobalAlignment(sequence1, sequence2);
+        let s1 = this._character_map.translate(sequence1);
+        let s2 = this._character_map.translate(sequence2);
+        let gap = this._character_map.translate('_')[0];
+        for (let i = 0; i < sequence1.length; ++i) {
+            for (let j = 0; j < sequence2.length; ++j) {
+                scores[GlobalAligner.DIAG] = alignment.get_score_at(i - 1, j - 1) + this._get_score(s1[i], s2[j]);
+                scores[GlobalAligner.LEFT] = alignment.get_score_at(i, j - 1) + this._get_score(gap, s2[j]);
+                scores[GlobalAligner.UP] = alignment.get_score_at(i - 1, j) + this._get_score(s1[i], gap);
+                let idx = scores.indexOf(Math.max(...scores));
+                alignment.set_score_at(i, j, scores[idx]);
+                alignment.set_pointer(i, j, idx);
+            }
+        }
+        return alignment;
+    }
+
+    _get_score(i : number, j : number) : number {
+        return this._scoring_matrix[i * this._character_map.alphabet.length + j];
+    }
+}
+
 class LocalAligner {
+
+    static readonly END = 0;
+    static readonly DIAG = 1;
+    static readonly LEFT = 2;
+    static readonly UP = 3;
 
     _scoring_matrix : Int32Array;
     _character_map : CharacterMap;
@@ -67,11 +155,11 @@ class LocalAligner {
         let s1 = this._character_map.translate(sequence1);
         let s2 = this._character_map.translate(sequence2);
         let gap = this._character_map.translate('_')[0];
-        for (let i = 1; i < sequence1.length + 1; ++i) {
-            for (let j = 1; j < sequence2.length + 1; ++j) {
-                scores[1] = alignment.get_score_at(i, j - 1) + this._get_score(gap, s2[j - 1]);
-                scores[2] = alignment.get_score_at(i - 1, j) + this._get_score(s1[i - 1], gap);
-                scores[3] = alignment.get_score_at(i - 1, j - 1) + this._get_score(s1[i - 1], s2[j - 1]);
+        for (let i = 0; i < sequence1.length; ++i) {
+            for (let j = 0; j < sequence2.length; ++j) {
+                scores[LocalAligner.DIAG] = alignment.get_score_at(i - 1, j - 1) + this._get_score(s1[i], s2[j]);
+                scores[LocalAligner.LEFT] = alignment.get_score_at(i, j - 1) + this._get_score(gap, s2[j]);
+                scores[LocalAligner.UP] = alignment.get_score_at(i - 1, j) + this._get_score(s1[i], gap);
                 let idx = scores.indexOf(Math.max(...scores));
                 alignment.set_score_at(i, j, scores[idx]);
                 alignment.set_pointer(i, j, idx);
@@ -85,7 +173,7 @@ class LocalAligner {
     }
 }
 
-class LocalAlignment {
+class Alignment {
 
     _scores : Int32Array;
     _pointers : Int32Array;
@@ -96,58 +184,14 @@ class LocalAlignment {
     constructor(s1 : string, s2 : string) {
         this._scores = new Int32Array((s1.length + 1) * (s2.length + 1));
         this._pointers = new Int32Array((s1.length + 1) * (s2.length + 1));
-        this._stop = [0, 0];
+        this._stop = [s1.length - 1, s2.length - 1];
 
         this._s1 = s1;
         this._s2 = s2;
     }
 
     to_string() : string {
-        let si = this._s1;
-        let sj = this._s2;
-        let [i, j] = this._stop;
-
-        let a = [];
-        let ai = [si.substring(i, si.length)];
-        let aj = [sj.substring(j, sj.length)];
-
-        while (this._scores[this._get_index(i, j)] > 0) {
-            let pointer = this._pointers[this._get_index(i, j)];
-            if (pointer == 1) {
-                ai.push('-');
-                aj.push(sj[j - 1]);
-                a.push(' ');
-                j -= 1;
-            }
-            else if (pointer == 2) {
-                ai.push(si[i - 1]);
-                aj.push('-');
-                a.push(' ');
-                i -= 1;
-            }
-            else if (pointer == 3) {
-                ai.push(si[i - 1]);
-                aj.push(sj[j - 1]);
-                a.push(si[i - 1] == sj[j - 1] ? '|' : '.');
-                i -= 1;
-                j -= 1;
-            }
-        }
-
-        ai.push(si.substring(0, i));
-        aj.push(sj.substring(0, j));
-        if (i > j) {
-            a.push(' '.repeat(i));
-            aj.push(' '.repeat(i - j));
-        }
-        else if (j > i) {
-            a.push(' '.repeat(j));
-            ai.push(' '.repeat(j - i));
-        }
-        else {
-            a.push(' '.repeat(i));
-        }
-        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
+        throw new Error('Invalid use of Alignment class. Use GlobalAlignment, LocalAlignment or SemiGlobalAlignment instead.');
     }
 
     get_score() : number {
@@ -161,9 +205,6 @@ class LocalAlignment {
 
     set_score_at(i : number, j : number, score : number) {
         this._scores[this._get_index(i, j)] = score;
-        if (score > this._scores[this._get_index(this._stop[0], this._stop[1])]) {
-            this._stop = [i, j];
-        }
     }
 
     get_pointer(i : number, j : number) : number {
@@ -175,20 +216,223 @@ class LocalAlignment {
     }
 
     _get_index(i : number, j : number) {
-        return i * (this._s2.length + 1) + j + 1;
+        return (i + 1) * (this._s2.length + 1) + (j + 1);
     }
 }
 
-function align(sequence1 : string, sequence2 : string) : LocalAlignment {
+class GlobalAlignment extends Alignment {
+
+    constructor(s1 : string, s2 : string) {
+        super(s1, s2);
+        for (let i = 1; i < s1.length + 1; ++i) {
+            this.set_score_at(i - 1, -1, -i);
+            this.set_pointer(i - 1, -1, GlobalAligner.UP);
+        }
+        for (let j = 1; j < s2.length + 1; ++j) {
+            this.set_score_at(-1, j - 1, -j);
+            this.set_pointer(-1, j - 1, GlobalAligner.LEFT);
+        }
+    }
+
+    to_string() : string {
+        let si = this._s1;
+        let sj = this._s2;
+        let [i, j] = this._stop;
+
+        let a = [];
+        let ai = [];
+        let aj = [];
+
+        let pointer = this.get_pointer(i, j);
+        while (i >= 0 || j >= 0) {
+            if (pointer == GlobalAligner.LEFT) {
+                ai.push('-');
+                aj.push(sj[j]);
+                a.push(' ');
+                j -= 1;
+            }
+            else if (pointer == GlobalAligner.UP) {
+                ai.push(si[i]);
+                aj.push('-');
+                a.push(' ');
+                i -= 1;
+            }
+            else if (pointer == GlobalAligner.DIAG) {
+                ai.push(si[i]);
+                aj.push(sj[j]);
+                a.push(si[i] == sj[j] ? '|' : '.');
+                i -= 1;
+                j -= 1;
+            }
+            pointer = this.get_pointer(i, j);
+        }
+
+        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
+    }
+}
+
+class SemiGlobalAlignment extends Alignment {
+
+    constructor(s1 : string, s2 : string) {
+        super(s1, s2);
+        if (s1.length < s2.length) {
+            for (let i = 1; i < s1.length + 1; ++i) {
+                this.set_score_at(i - 1, -1, -i);
+                this.set_pointer(i - 1, -1, GlobalAligner.UP);
+            }
+            for (let j = 1; j < s2.length + 1; ++j) {
+                this.set_pointer(-1, j - 1, GlobalAligner.LEFT);
+            }
+        }
+        else {
+            for (let i = 1; i < s1.length + 1; ++i) {
+                this.set_pointer(i - 1, -1, GlobalAligner.UP);
+            }
+            for (let j = 1; j < s2.length + 1; ++j) {
+                this.set_score_at(-1, j - 1, -j);
+                this.set_pointer(-1, j - 1, GlobalAligner.LEFT);
+            }
+        }
+    }
+
+    to_string() : string {
+        let si = this._s1;
+        let sj = this._s2;
+        let [i, j] = this._stop;
+
+        let a = [];
+        let ai = [];
+        let aj = [];
+        if (si.length < sj.length) {
+            aj.push(sj.substring(j + 1));
+        }
+        else {
+            ai.push(si.substring(i + 1));
+        }
+
+
+        let pointer = this.get_pointer(i, j);
+        while (i >= 0 && j >= 0) {
+            if (pointer == GlobalAligner.LEFT) {
+                ai.push('-');
+                aj.push(sj[j]);
+                a.push(' ');
+                j -= 1;
+            }
+            else if (pointer == GlobalAligner.UP) {
+                ai.push(si[i]);
+                aj.push('-');
+                a.push(' ');
+                i -= 1;
+            }
+            else if (pointer == GlobalAligner.DIAG) {
+                ai.push(si[i]);
+                aj.push(sj[j]);
+                a.push(si[i] == sj[j] ? '|' : '.');
+                i -= 1;
+                j -= 1;
+            }
+            pointer = this.get_pointer(i, j);
+        }
+
+        if (i > 0) {
+            ai.push(si.substring(0, i + 1));
+            aj.push(' '.repeat(i + 1));
+            a.push(' '.repeat(i + 1));
+        }
+        else if (j > 0) {
+            ai.push(' '.repeat(j + 1));
+            aj.push(sj.substring(0, j + 1));
+            a.push(' '.repeat(j + 1));
+        }
+
+        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
+    }
+
+    set_score_at(i : number, j : number, score : number) {
+        super.set_score_at(i, j, score);
+        let on_short_sequence_border = (this._s1.length < this._s2.length && i == this._s1.length - 1) ||
+            (this._s2.length < this._s1.length && j == this._s2.length - 1);
+        if (on_short_sequence_border && score > this.get_score_at(this._stop[0], this._stop[1])) {
+            this._stop = [i, j];
+        }
+    }
+}
+
+class LocalAlignment extends Alignment {
+
+    constructor(s1 : string, s2 : string) {
+        super(s1, s2);
+    }
+
+    to_string() : string {
+        let si = this._s1;
+        let sj = this._s2;
+        let [i, j] = this._stop;
+
+        let a = [];
+        let ai = [];
+        let aj = [];
+
+        let pointer = this.get_pointer(i, j);
+        while (pointer != LocalAligner.END) {
+            if (pointer == LocalAligner.LEFT) {
+                ai.push('-');
+                aj.push(sj[j]);
+                a.push(' ');
+                j -= 1;
+            }
+            else if (pointer == LocalAligner.UP) {
+                ai.push(si[i]);
+                aj.push('-');
+                a.push(' ');
+                i -= 1;
+            }
+            else if (pointer == LocalAligner.DIAG) {
+                ai.push(si[i]);
+                aj.push(sj[j]);
+                a.push(si[i] == sj[j] ? '|' : '.');
+                i -= 1;
+                j -= 1;
+            }
+            pointer = this.get_pointer(i, j);
+        }
+
+        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
+    }
+
+    set_score_at(i : number, j : number, score : number) {
+        super.set_score_at(i, j, score);
+        if (score > this.get_score_at(this._stop[0], this._stop[1])) {
+            this._stop = [i, j];
+        }
+    }
+}
+
+function global(sequence1 : string, sequence2 : string) : GlobalAlignment {
+    return (new GlobalAligner(DEFAULT_NUCLEOTIDE_SCORING_MATRIX,
+        new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET))).align(sequence1, sequence2);
+}
+
+function semi(sequence1 : string, sequence2 : string) : SemiGlobalAlignment {
+    return (new SemiGlobalAligner(DEFAULT_NUCLEOTIDE_SCORING_MATRIX,
+        new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET))).align(sequence1, sequence2);
+}
+
+function local(sequence1 : string, sequence2 : string) : LocalAlignment {
     return (new LocalAligner(DEFAULT_NUCLEOTIDE_SCORING_MATRIX,
         new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET))).align(sequence1, sequence2);
+
 }
 
 export {
     DEFAULT_NUCLEOTIDE_ALPHABET,
     DEFAULT_NUCLEOTIDE_SCORING_MATRIX,
     LocalAligner,
+    GlobalAlignment,
     LocalAlignment,
     CharacterMap,
-    align
+    global,
+    semi,
+    local
 }

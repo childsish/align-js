@@ -6,14 +6,18 @@
 </head>
 <body>
 
-<textarea id="sequence1" type="text" rows="4" cols="50">ataggcgata</textarea>
-<textarea id="sequence2" type="text" rows="4" cols="50">ggcg</textarea>
-<button id="align_button">Align Sequences</button>
+<h3>Sequence 1</h3>
+<textarea id="sequence1" type="text" rows="4" cols="50">ataggccgata</textarea>
+<h3>Sequence 2</h3>
+<textarea id="sequence2" type="text" rows="4" cols="50">ggccg</textarea>
+<div>
+    <button id="align_button">Align Sequences</button>
+</div>
 <div>
     <span>Alignment score:</span>
     <span id="score"></span>
 </div>
-<pre id="alignment"></pre>
+<textarea id="alignment" rows="8" cols="50" readonly></textarea>
 <script>
     const exports = {};
 
@@ -25,7 +29,7 @@
         var sequence1 = document.getElementById('sequence1').value;
         var sequence2 = document.getElementById('sequence2').value;
 
-        var alignment = align(sequence1, sequence2);
+        var alignment = local(sequence1, sequence2);
 
         document.getElementById('alignment').textContent = alignment.to_string();
         document.getElementById('score').textContent = String(alignment.get_score());
