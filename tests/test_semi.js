@@ -6,7 +6,7 @@ describe('TestSemiGlobalAlignment', function () {
         var sequence1 = 'ggccg';
         var sequence2 = 'ataggccggata';
         var alignment = align_1.semi(sequence1, sequence2);
-        chai_1.expect(alignment.to_string()).to.equal('   ggccg\n   |||||\nataggccggata');
+        chai_1.expect(alignment.to_string()).to.equal('---ggccg----\n   |||||    \nataggccggata');
         chai_1.expect(alignment.get_score()).to.equal(25);
     });
 });

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Benchmark</title>
+</head>
+<body>
+
+<div>
+    <span>Time taken: </span>
+    <span id="duration"></span>
+</div>
+<pre id="alignments"></pre>
+<script>
+    const exports = {};
+
+    window.onload = function() {
+        let sequences = get_sequences(1000);
+        console.log('sequences created');
+
+        let aligner = new Aligner('semi', DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET));
+        let t0 = performance.now();
+        let alignments = align_sequences(sequences, aligner);
+        let duration = (performance.now() - t0) / 1000;
+        console.log('sequences aligned');
+
+        document.getElementById('duration').textContent = duration.toString() + 's';
+        for (let i = 0; i < alignments.length; ++i) {
+            let pre = document.createElement('pre');
+            pre.textContent = alignments[i].to_string();
+            document.getElementById('alignments').appendChild(pre);
+        }
+    };
+
+    function get_sequences(n) {
+        let sequences = [];
+        for (let i = 0; i < n; ++i) {
+            let sequence = [];
+            let length = Math.floor(Math.random() * 180 + 20)
+            for (let j = 0; j < length; ++j) {
+                sequence[j] = 'acgt'[Math.floor(Math.random() * 4)];
+            }
+            sequences[i] = sequence.join('');
+        }
+        return sequences;
+    }
+
+    function align_sequences(sequences, aligner) {
+        let alignments = [];
+        for (let i = 0; i < sequences.length / 2; ++i) {
+            alignments[i] = aligner.align(sequences[2 * i], sequences[2 * i + 1]);
+        }
+        return alignments;
+    }
+</script>
+<script src="../align.js"></script>
+</body>
+</html>

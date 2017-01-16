@@ -51,136 +51,102 @@ var CharacterMap = (function () {
     return CharacterMap;
 }());
 exports.CharacterMap = CharacterMap;
-var GlobalAligner = (function () {
-    function GlobalAligner(scoring_matrix, character_map) {
+var Aligner = (function () {
+    function Aligner(mode, scoring_matrix, character_map) {
+        if (mode === void 0) { mode = 'global'; }
         if (scoring_matrix.length != Math.pow(character_map.alphabet.length, 2)) {
             throw new Error('Scoring matrix must be square of alphabet length');
         }
+        this._mode = mode;
         this._scoring_matrix = scoring_matrix;
         this._character_map = character_map ? character_map : new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET);
     }
-    GlobalAligner.prototype.align = function (sequence1, sequence2) {
-        var scores = new Int32Array([0, 0, 0]);
-        var alignment = new GlobalAlignment(sequence1, sequence2);
+    Aligner.prototype.align = function (sequence1, sequence2) {
+        var end = this._mode == 'local' ? 0 : 1 << 31;
+        var scores = new Int32Array([end, 0, 0, 0]);
+        var alignment = this._mode == 'semi' ? new SemiGlobalAlignment(sequence1, sequence2) :
+            this._mode == 'local' ? new LocalAlignment(sequence1, sequence2) :
+                new GlobalAlignment(sequence1, sequence2);
         var s1 = this._character_map.translate(sequence1);
         var s2 = this._character_map.translate(sequence2);
         var gap = this._character_map.translate('_')[0];
         for (var i = 0; i < sequence1.length; ++i) {
             for (var j = 0; j < sequence2.length; ++j) {
-                scores[GlobalAligner.DIAG] = alignment.get_score_at(i - 1, j - 1) + this._get_score(s1[i], s2[j]);
-                scores[GlobalAligner.LEFT] = alignment.get_score_at(i, j - 1) + this._get_score(gap, s2[j]);
-                scores[GlobalAligner.UP] = alignment.get_score_at(i - 1, j) + this._get_score(s1[i], gap);
+                scores[Aligner.DIAG] = alignment.get_entry(i - 1, j - 1).score + this._get_score(s1[i], s2[j]);
+                scores[Aligner.LEFT] = alignment.get_entry(i, j - 1).score + this._get_score(gap, s2[j]);
+                scores[Aligner.UP] = alignment.get_entry(i - 1, j).score + this._get_score(s1[i], gap);
                 var idx = scores.indexOf(Math.max.apply(Math, scores));
-                alignment.set_score_at(i, j, scores[idx]);
-                alignment.set_pointer(i, j, idx);
+                alignment.set_entry(i, j, scores[idx], idx);
             }
         }
         return alignment;
     };
-    GlobalAligner.prototype._get_score = function (i, j) {
+    Aligner.prototype._get_score = function (i, j) {
         return this._scoring_matrix[i * this._character_map.alphabet.length + j];
     };
-    GlobalAligner.DIAG = 0;
-    GlobalAligner.LEFT = 1;
-    GlobalAligner.UP = 2;
-    return GlobalAligner;
+    Aligner.END = 0;
+    Aligner.DIAG = 1;
+    Aligner.LEFT = 2;
+    Aligner.UP = 3;
+    return Aligner;
 }());
-var SemiGlobalAligner = (function () {
-    function SemiGlobalAligner(scoring_matrix, character_map) {
-        if (scoring_matrix.length != Math.pow(character_map.alphabet.length, 2)) {
-            throw new Error('Scoring matrix must be square of alphabet length');
-        }
-        this._scoring_matrix = scoring_matrix;
-        this._character_map = character_map ? character_map : new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET);
-    }
-    SemiGlobalAligner.prototype.align = function (sequence1, sequence2) {
-        var scores = new Int32Array([0, 0, 0]);
-        var alignment = new SemiGlobalAlignment(sequence1, sequence2);
-        var s1 = this._character_map.translate(sequence1);
-        var s2 = this._character_map.translate(sequence2);
-        var gap = this._character_map.translate('_')[0];
-        for (var i = 0; i < sequence1.length; ++i) {
-            for (var j = 0; j < sequence2.length; ++j) {
-                scores[GlobalAligner.DIAG] = alignment.get_score_at(i - 1, j - 1) + this._get_score(s1[i], s2[j]);
-                scores[GlobalAligner.LEFT] = alignment.get_score_at(i, j - 1) + this._get_score(gap, s2[j]);
-                scores[GlobalAligner.UP] = alignment.get_score_at(i - 1, j) + this._get_score(s1[i], gap);
-                var idx = scores.indexOf(Math.max.apply(Math, scores));
-                alignment.set_score_at(i, j, scores[idx]);
-                alignment.set_pointer(i, j, idx);
-            }
-        }
-        return alignment;
-    };
-    SemiGlobalAligner.prototype._get_score = function (i, j) {
-        return this._scoring_matrix[i * this._character_map.alphabet.length + j];
-    };
-    SemiGlobalAligner.DIAG = 0;
-    SemiGlobalAligner.LEFT = 1;
-    SemiGlobalAligner.UP = 2;
-    return SemiGlobalAligner;
-}());
-var LocalAligner = (function () {
-    function LocalAligner(scoring_matrix, character_map) {
-        if (scoring_matrix.length != Math.pow(character_map.alphabet.length, 2)) {
-            throw new Error('Scoring matrix must be square of alphabet length');
-        }
-        this._scoring_matrix = scoring_matrix;
-        this._character_map = character_map ? character_map : new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET);
-    }
-    LocalAligner.prototype.align = function (sequence1, sequence2) {
-        var scores = new Int32Array([0, 0, 0, 0]);
-        var alignment = new LocalAlignment(sequence1, sequence2);
-        var s1 = this._character_map.translate(sequence1);
-        var s2 = this._character_map.translate(sequence2);
-        var gap = this._character_map.translate('_')[0];
-        for (var i = 0; i < sequence1.length; ++i) {
-            for (var j = 0; j < sequence2.length; ++j) {
-                scores[LocalAligner.DIAG] = alignment.get_score_at(i - 1, j - 1) + this._get_score(s1[i], s2[j]);
-                scores[LocalAligner.LEFT] = alignment.get_score_at(i, j - 1) + this._get_score(gap, s2[j]);
-                scores[LocalAligner.UP] = alignment.get_score_at(i - 1, j) + this._get_score(s1[i], gap);
-                var idx = scores.indexOf(Math.max.apply(Math, scores));
-                alignment.set_score_at(i, j, scores[idx]);
-                alignment.set_pointer(i, j, idx);
-            }
-        }
-        return alignment;
-    };
-    LocalAligner.prototype._get_score = function (i, j) {
-        return this._scoring_matrix[i * this._character_map.alphabet.length + j];
-    };
-    LocalAligner.END = 0;
-    LocalAligner.DIAG = 1;
-    LocalAligner.LEFT = 2;
-    LocalAligner.UP = 3;
-    return LocalAligner;
-}());
-exports.LocalAligner = LocalAligner;
+exports.Aligner = Aligner;
 var Alignment = (function () {
     function Alignment(s1, s2) {
         this._scores = new Int32Array((s1.length + 1) * (s2.length + 1));
         this._pointers = new Int32Array((s1.length + 1) * (s2.length + 1));
         this._stop = [s1.length - 1, s2.length - 1];
+        this._max = [s1.length - 1, s2.length - 1];
         this._s1 = s1;
         this._s2 = s2;
     }
     Alignment.prototype.to_string = function () {
-        throw new Error('Invalid use of Alignment class. Use GlobalAlignment, LocalAlignment or SemiGlobalAlignment instead.');
+        var si = this._s1;
+        var sj = this._s2;
+        var _a = this._stop, i = _a[0], j = _a[1];
+        var a = [];
+        var ai = [];
+        var aj = [];
+        var pointer = this.get_entry(i, j).pointer;
+        while (pointer != Aligner.END) {
+            if (pointer == Aligner.LEFT) {
+                ai.push('-');
+                aj.push(sj[j]);
+                a.push(' ');
+                j -= 1;
+            }
+            else if (pointer == Aligner.UP) {
+                ai.push(si[i]);
+                aj.push('-');
+                a.push(' ');
+                i -= 1;
+            }
+            else if (pointer == Aligner.DIAG) {
+                ai.push(si[i]);
+                aj.push(sj[j]);
+                a.push(si[i] == sj[j] ? '|' : '.');
+                i -= 1;
+                j -= 1;
+            }
+            pointer = this.get_entry(i, j).pointer;
+        }
+        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
     };
     Alignment.prototype.get_score = function () {
-        var _a = this._stop, i = _a[0], j = _a[1];
+        var _a = this._max, i = _a[0], j = _a[1];
         return this._scores[this._get_index(i, j)];
     };
-    Alignment.prototype.get_score_at = function (i, j) {
-        return this._scores[this._get_index(i, j)];
+    Alignment.prototype.set_entry = function (i, j, score, pointer) {
+        var index = this._get_index(i, j);
+        this._scores[index] = score;
+        this._pointers[index] = pointer;
     };
-    Alignment.prototype.set_score_at = function (i, j, score) {
-        this._scores[this._get_index(i, j)] = score;
-    };
-    Alignment.prototype.get_pointer = function (i, j) {
-        return this._pointers[this._get_index(i, j)];
-    };
-    Alignment.prototype.set_pointer = function (i, j, pointer) {
-        this._pointers[this._get_index(i, j)] = pointer;
+    Alignment.prototype.get_entry = function (i, j) {
+        var index = this._get_index(i, j);
+        return {
+            score: this._scores[index],
+            pointer: this._pointers[index]
+        };
     };
     Alignment.prototype._get_index = function (i, j) {
         return (i + 1) * (this._s2.length + 1) + (j + 1);
@@ -192,46 +158,12 @@ var GlobalAlignment = (function (_super) {
     function GlobalAlignment(s1, s2) {
         _super.call(this, s1, s2);
         for (var i = 1; i < s1.length + 1; ++i) {
-            this.set_score_at(i - 1, -1, -i);
-            this.set_pointer(i - 1, -1, GlobalAligner.UP);
+            this.set_entry(i - 1, -1, -i, Aligner.UP);
         }
         for (var j = 1; j < s2.length + 1; ++j) {
-            this.set_score_at(-1, j - 1, -j);
-            this.set_pointer(-1, j - 1, GlobalAligner.LEFT);
+            this.set_entry(-1, j - 1, -j, Aligner.LEFT);
         }
     }
-    GlobalAlignment.prototype.to_string = function () {
-        var si = this._s1;
-        var sj = this._s2;
-        var _a = this._stop, i = _a[0], j = _a[1];
-        var a = [];
-        var ai = [];
-        var aj = [];
-        var pointer = this.get_pointer(i, j);
-        while (i >= 0 || j >= 0) {
-            if (pointer == GlobalAligner.LEFT) {
-                ai.push('-');
-                aj.push(sj[j]);
-                a.push(' ');
-                j -= 1;
-            }
-            else if (pointer == GlobalAligner.UP) {
-                ai.push(si[i]);
-                aj.push('-');
-                a.push(' ');
-                i -= 1;
-            }
-            else if (pointer == GlobalAligner.DIAG) {
-                ai.push(si[i]);
-                aj.push(sj[j]);
-                a.push(si[i] == sj[j] ? '|' : '.');
-                i -= 1;
-                j -= 1;
-            }
-            pointer = this.get_pointer(i, j);
-        }
-        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
-    };
     return GlobalAlignment;
 }(Alignment));
 exports.GlobalAlignment = GlobalAlignment;
@@ -241,137 +173,64 @@ var SemiGlobalAlignment = (function (_super) {
         _super.call(this, s1, s2);
         if (s1.length < s2.length) {
             for (var i = 1; i < s1.length + 1; ++i) {
-                this.set_score_at(i - 1, -1, -i);
-                this.set_pointer(i - 1, -1, GlobalAligner.UP);
+                this.set_entry(i - 1, -1, -i, Aligner.UP);
             }
             for (var j = 1; j < s2.length + 1; ++j) {
-                this.set_pointer(-1, j - 1, GlobalAligner.LEFT);
+                this.set_entry(-1, j - 1, 0, Aligner.LEFT);
             }
         }
         else {
             for (var i = 1; i < s1.length + 1; ++i) {
-                this.set_pointer(i - 1, -1, GlobalAligner.UP);
+                this.set_entry(i - 1, -1, 0, Aligner.UP);
             }
             for (var j = 1; j < s2.length + 1; ++j) {
-                this.set_score_at(-1, j - 1, -j);
-                this.set_pointer(-1, j - 1, GlobalAligner.LEFT);
+                this.set_entry(-1, j - 1, -j, Aligner.LEFT);
             }
         }
     }
-    SemiGlobalAlignment.prototype.to_string = function () {
-        var si = this._s1;
-        var sj = this._s2;
-        var _a = this._stop, i = _a[0], j = _a[1];
-        var a = [];
-        var ai = [];
-        var aj = [];
-        if (si.length < sj.length) {
-            aj.push(sj.substring(j + 1));
+    SemiGlobalAlignment.prototype.set_entry = function (i, j, score, pointer) {
+        if (this._s1.length < this._s2.length && i == this._s1.length - 1) {
+            if (score > this.get_score()) {
+                _super.prototype.set_entry.call(this, i, j, score, pointer);
+                this._max = [i, j];
+            }
+            else {
+                _super.prototype.set_entry.call(this, i, j, score, Aligner.LEFT);
+            }
+        }
+        else if (this._s2.length < this._s1.length && j == this._s2.length - 1) {
+            if (score > this.get_score()) {
+                _super.prototype.set_entry.call(this, i, j, score, pointer);
+                this._max = [i, j];
+            }
+            else {
+                _super.prototype.set_entry.call(this, i, j, score, Aligner.UP);
+            }
         }
         else {
-            ai.push(si.substring(i + 1));
-        }
-        var pointer = this.get_pointer(i, j);
-        while (i >= 0 && j >= 0) {
-            if (pointer == GlobalAligner.LEFT) {
-                ai.push('-');
-                aj.push(sj[j]);
-                a.push(' ');
-                j -= 1;
-            }
-            else if (pointer == GlobalAligner.UP) {
-                ai.push(si[i]);
-                aj.push('-');
-                a.push(' ');
-                i -= 1;
-            }
-            else if (pointer == GlobalAligner.DIAG) {
-                ai.push(si[i]);
-                aj.push(sj[j]);
-                a.push(si[i] == sj[j] ? '|' : '.');
-                i -= 1;
-                j -= 1;
-            }
-            pointer = this.get_pointer(i, j);
-        }
-        if (i > 0) {
-            ai.push(si.substring(0, i + 1));
-            aj.push(' '.repeat(i + 1));
-            a.push(' '.repeat(i + 1));
-        }
-        else if (j > 0) {
-            ai.push(' '.repeat(j + 1));
-            aj.push(sj.substring(0, j + 1));
-            a.push(' '.repeat(j + 1));
-        }
-        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
-    };
-    SemiGlobalAlignment.prototype.set_score_at = function (i, j, score) {
-        _super.prototype.set_score_at.call(this, i, j, score);
-        var on_short_sequence_border = (this._s1.length < this._s2.length && i == this._s1.length - 1) ||
-            (this._s2.length < this._s1.length && j == this._s2.length - 1);
-        if (on_short_sequence_border && score > this.get_score_at(this._stop[0], this._stop[1])) {
-            this._stop = [i, j];
+            _super.prototype.set_entry.call(this, i, j, score, pointer);
         }
     };
     return SemiGlobalAlignment;
 }(Alignment));
 var LocalAlignment = (function (_super) {
     __extends(LocalAlignment, _super);
-    function LocalAlignment(s1, s2) {
-        _super.call(this, s1, s2);
+    function LocalAlignment() {
+        _super.apply(this, arguments);
     }
-    LocalAlignment.prototype.to_string = function () {
-        var si = this._s1;
-        var sj = this._s2;
-        var _a = this._stop, i = _a[0], j = _a[1];
-        var a = [];
-        var ai = [];
-        var aj = [];
-        var pointer = this.get_pointer(i, j);
-        while (pointer != LocalAligner.END) {
-            if (pointer == LocalAligner.LEFT) {
-                ai.push('-');
-                aj.push(sj[j]);
-                a.push(' ');
-                j -= 1;
-            }
-            else if (pointer == LocalAligner.UP) {
-                ai.push(si[i]);
-                aj.push('-');
-                a.push(' ');
-                i -= 1;
-            }
-            else if (pointer == LocalAligner.DIAG) {
-                ai.push(si[i]);
-                aj.push(sj[j]);
-                a.push(si[i] == sj[j] ? '|' : '.');
-                i -= 1;
-                j -= 1;
-            }
-            pointer = this.get_pointer(i, j);
-        }
-        return ai.reverse().join('') + '\n' + a.reverse().join('') + '\n' + aj.reverse().join('');
-    };
-    LocalAlignment.prototype.set_score_at = function (i, j, score) {
-        _super.prototype.set_score_at.call(this, i, j, score);
-        if (score > this.get_score_at(this._stop[0], this._stop[1])) {
+    LocalAlignment.prototype.set_entry = function (i, j, score, pointer) {
+        _super.prototype.set_entry.call(this, i, j, score, pointer);
+        if (score > this.get_score()) {
             this._stop = [i, j];
+            this._max = [i, j];
         }
     };
     return LocalAlignment;
 }(Alignment));
 exports.LocalAlignment = LocalAlignment;
-function global(sequence1, sequence2) {
-    return (new GlobalAligner(DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET))).align(sequence1, sequence2);
+function align(sequence1, sequence2, type) {
+    if (type === void 0) { type = 'global'; }
+    return (new Aligner(type, DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET))).align(sequence1, sequence2);
 }
-exports.global = global;
-function semi(sequence1, sequence2) {
-    return (new SemiGlobalAligner(DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET))).align(sequence1, sequence2);
-}
-exports.semi = semi;
-function local(sequence1, sequence2) {
-    return (new LocalAligner(DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET))).align(sequence1, sequence2);
-}
-exports.local = local;
+exports.align = align;
 //# sourceMappingURL=align.js.map

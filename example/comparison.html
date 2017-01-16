@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Comparison</title>
+</head>
+<body>
+
+<pre id="alignments"></pre>
+<script>
+    const exports = {};
+
+    window.onload = function() {
+        let sequences = get_sequences(200);
+        console.log('sequences created');
+
+        let global_aligner = new Aligner('global', DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET));
+        let global_alignments = align_sequences(sequences, global_aligner);
+
+        let semi_aligner = new Aligner('semi', DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET));
+        let semi_alignments = align_sequences(sequences, semi_aligner);
+
+        let local_aligner = new Aligner('local', DEFAULT_NUCLEOTIDE_SCORING_MATRIX, new CharacterMap(DEFAULT_NUCLEOTIDE_ALPHABET));
+        let local_alignments = align_sequences(sequences, local_aligner);
+        console.log('sequences aligned');
+
+        for (let i = 0; i < global_alignments.length; ++i) {
+            let div = document.createElement('div');
+
+            let global_pre = document.createElement('pre');
+            global_pre.textContent = global_alignments[i].to_string() + ' ' + global_alignments[i].get_score();
+            div.appendChild(global_pre);
+
+            let semi_pre = document.createElement('pre');
+            semi_pre.textContent = semi_alignments[i].to_string() + ' ' + semi_alignments[i].get_score();
+            div.appendChild(semi_pre);
+
+            let local_pre = document.createElement('pre');
+            local_pre.textContent = local_alignments[i].to_string() + ' ' + local_alignments[i].get_score();
+            div.appendChild(local_pre);
+
+            document.getElementById('alignments').appendChild(div);
+            document.getElementById('alignments').appendChild(document.createElement('hr'));
+        }
+    };
+
+    function get_sequences(n) {
+        let sequences = [];
+        for (let i = 0; i < n; ++i) {
+            let sequence = [];
+            let length = Math.floor(Math.random() * 180 + 20)
+            for (let j = 0; j < length; ++j) {
+                sequence[j] = 'acgt'[Math.floor(Math.random() * 4)];
+            }
+            sequences[i] = sequence.join('');
+        }
+        return sequences;
+    }
+
+    function align_sequences(sequences, aligner) {
+        let alignments = [];
+        for (let i = 0; i < sequences.length / 2; ++i) {
+            alignments[i] = aligner.align(sequences[2 * i], sequences[2 * i + 1]);
+        }
+        return alignments;
+    }
+</script>
+<script src="../align.js"></script>
+</body>
+</html>
